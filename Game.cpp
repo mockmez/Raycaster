@@ -1,4 +1,3 @@
-/*
 #pragma once
 
 #include <SFML/Graphics.hpp>
@@ -113,7 +112,7 @@ int main() {
 				else if (event.key.code == sf::Keyboard::D) {
 					player.setRotation(player.getRotation() + 5);
 				}
-				/*else if (event.key.code == sf::Keyboard::Z) {
+				else if (event.key.code == sf::Keyboard::Z) {
 					player.setPosition(sf::Vector2f(player.getPosition().x, player.getPosition().y + 5));
 				}
 				else if (event.key.code == sf::Keyboard::S) {
