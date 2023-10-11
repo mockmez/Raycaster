@@ -53,7 +53,7 @@ std::vector<sf::RectangleShape> ray_y_array;
 
 
 
-int main() {
+int game_func() {
 
 
 	sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "The Title");
@@ -136,10 +136,10 @@ int main() {
 
 
 
-		//for (int i = 0; i < RAY_COUNT; i++) {
+		for (int i = 0; i < RAY_COUNT; i++) {
 			//ray_x_array[i].setSize(sf::Vector2f(inBox_xComponent, ray_x_array[i].getSize().y));
 			//ray_y_array[i].setSize(sf::Vector2f(inBox_yComponent, ray_y_array[i].getSize().y));
-		}//
+		}
 
 		window.clear(sf::Color::White);
 
