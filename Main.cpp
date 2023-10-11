@@ -1,27 +1,25 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
-#include <cmath>
 #include <iostream>
+#include <vector>
+#include <math.h>
+#include <SFML/Graphics.hpp>
 
-//CONSTANTS
+const double PI = 3.141592653589793238462643383279502884197;
 
-const double PI = 3.14159265358979323846;
+const int SCREEN_WIDTH = 1200;
+const int SCREEN_HEIGHT = 600;
 
-/*Map Constants*/
-const int SCREEN_WIDTH = 720;
-const int SCREEN_HEIGHT = 720;
+const int MAP_HEIGHT = 600;
+const int MAP_WIDTH = 600;
 
-/*Tile Constants*/
 const int TILE_COUNT_X = 10;
 const int TILE_COUNT_Y = 10;
-
+const int TILE_WIDTH = MAP_WIDTH / TILE_COUNT_X;
+const int TILE_HEIGHT = MAP_HEIGHT / TILE_COUNT_Y;
 const int TILE_THICKNESS = 5;
 
-const float TILE_WIDTH = (float)SCREEN_WIDTH / TILE_COUNT_X;
-const float TILE_HEIGHT = (float)SCREEN_HEIGHT / TILE_COUNT_Y;
-
-const char MAP[TILE_COUNT_Y][TILE_COUNT_X + 1] = {
+const char map_array[][TILE_COUNT_X + 1] = {
 
 	"##########",
 	"#        #",
@@ -36,261 +34,145 @@ const char MAP[TILE_COUNT_Y][TILE_COUNT_X + 1] = {
 
 };
 
-/*Raycaster Constants*/
-const int CAMERA_PLANE = 180;
-const int FOV = 60;
-const int HALF_FOV = FOV / 2;
-const int RAY_COUNT = 20;
-const float DEPTH_OF_VIEW = sqrt((SCREEN_WIDTH * SCREEN_WIDTH) + (SCREEN_HEIGHT * SCREEN_HEIGHT));
+const int PLAYER_RADIUS = 15;
+const int PLAYER_THICKNESS = 5;
 
-//VARIABLES
+std::vector <sf::RectangleShape> tile_vector;
+sf::CircleShape player(PLAYER_RADIUS);
+sf::RectangleShape player_dir(sf::Vector2f(PLAYER_RADIUS, 2));
 
-/*Player variables*/
+double step_x;
+double step_y;
 
-double step_x_comp;
-double step_y_comp;
-
-long circle_x_pos;
-long circle_y_pos;
-
-double prev_angle;
-double current_angle;
-
-long curr_x;
-long curr_y;
-
-int player_quad;
-
-/*Tile variables*/
-
-long rect_width;
-long rect_height;
-
-double rect_x_pos;
-double rect_y_pos;
-
-double tile_x_pos;
-double tile_y_pos;
-
-/*Map vectors*/
-
-std::vector<sf::RectangleShape> tile_arr;
-std::vector<sf::RectangleShape> ray_arr_x;
-std::vector<sf::RectangleShape> ray_arr_y;
-
-//FUNCTIONS
-
-double deg_to_radians(double degrees) {
-	return PI * degrees / 180;
+inline double deg_to_rad(double deg) {
+	return (PI * deg) / 180;
 }
 
-int check_collision(std::vector<sf::RectangleShape>& obj_arr, sf::Shape& obj_1) {
+sf::RectangleShape* check_player_collsion_tile(sf::CircleShape& player, std::vector <sf::RectangleShape>& tile_arr) {
 
-	for (int i = 0; i < obj_arr.size(); i++) {
-
-		if (obj_arr[i].getGlobalBounds().intersects(obj_1.getGlobalBounds()))
-			return 1;
+	for (int i = 0; i < tile_arr.size(); i++) {
+		if (player.getGlobalBounds().intersects(tile_arr[i].getGlobalBounds())) {
+			std::cout << "Collision occured \n";
+			return &tile_arr[i];
+		}
 	}
 
-	return 0;
+	return nullptr;
 
 }
 
-int circle_collision_detect(sf::CircleShape& obj_circle, sf::RectangleShape& obj_rect) {
+int check_player_collision_x(sf::CircleShape& player, std::vector <sf::RectangleShape>& tile_arr) {
 
-	circle_x_pos = obj_circle.getGlobalBounds().left;
-	circle_y_pos = obj_circle.getGlobalBounds().top;
-
-	rect_width = obj_rect.getGlobalBounds().width;
-	rect_height = obj_rect.getGlobalBounds().height;
-	rect_x_pos = obj_rect.getGlobalBounds().left;
-	rect_y_pos = obj_rect.getGlobalBounds().top;
+	sf::RectangleShape* collision_tile;
 	
-	if (((circle_x_pos >= rect_x_pos) && (circle_x_pos <= rect_x_pos + rect_width)) && ((circle_y_pos >= rect_y_pos) && (circle_y_pos <= rect_y_pos + rect_height))) {
+	if ((collision_tile = check_player_collsion_tile(player, tile_arr)) == nullptr)
 		return 1;
-	}
-	else {
+
+	if (((player.getPosition().x - player.getRadius()) >= collision_tile->getGlobalBounds().left) && ((player.getPosition().x + player.getRadius()) <= collision_tile->getGlobalBounds().left + TILE_WIDTH)) {
+		std::cout << "Collision with tile along X-axis: " << collision_tile->getGlobalBounds().left << ", " << collision_tile->getGlobalBounds().top << std::endl;
 		return 0;
 	}
+
+	return 1;
+
+}
+
+int check_player_collision_y(sf::CircleShape& player, std::vector <sf::RectangleShape>& tile_arr) {
+
+	sf::RectangleShape* collision_tile;
+
+	if ((collision_tile = check_player_collsion_tile(player, tile_arr)) == nullptr)
+		return 1;
+
+	if (((player.getPosition().y - player.getRadius()) >= collision_tile->getGlobalBounds().left) && ((player.getPosition().x + player.getRadius()) <= collision_tile->getGlobalBounds().top + TILE_HEIGHT)) {
+		std::cout << "Collision with tile along Y-axis: " << collision_tile->getPosition().x << ", " << collision_tile->getPosition().y << std::endl;
+		return 0;
+	}
+
+	return 1;
 
 }
 
 int main() {
 
 	sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "Raycaster");
-	window.setFramerateLimit(60);
 	sf::Event event;
 
 	for (int i = 0; i < TILE_COUNT_Y; i++) {
 		for (int j = 0; j < TILE_COUNT_X; j++) {
-
-			if (MAP[i][j] == '#') {
-				tile_arr.push_back(sf::RectangleShape(sf::Vector2f(TILE_WIDTH - TILE_THICKNESS, TILE_HEIGHT - TILE_THICKNESS)));
-				tile_arr[tile_arr.size() - 1].setOutlineThickness(TILE_THICKNESS);
-				tile_arr[tile_arr.size() - 1].setOutlineColor(sf::Color(100, 80, 100));
-				tile_arr[tile_arr.size() - 1].setPosition((j * TILE_WIDTH) + TILE_THICKNESS, (i * TILE_HEIGHT) + TILE_THICKNESS);
-				tile_arr[tile_arr.size() - 1].setFillColor(sf::Color(0, 250, 0));
-
+			if (map_array[i][j] == '#') {
+				tile_vector.push_back(sf::RectangleShape(sf::Vector2f(TILE_WIDTH - TILE_THICKNESS, TILE_HEIGHT - TILE_THICKNESS)));
+				tile_vector[tile_vector.size() - 1].setOutlineThickness(TILE_THICKNESS);
+				tile_vector[tile_vector.size() - 1].setPosition(sf::Vector2f(j * TILE_WIDTH, i * TILE_HEIGHT));
+				tile_vector[tile_vector.size() - 1].setFillColor(sf::Color::Blue);
+				tile_vector[tile_vector.size() - 1].setOutlineColor(sf::Color::Green);
 			}
-
 		}
 	}
 
-	sf::CircleShape player(13);
+	player.setOutlineThickness(PLAYER_THICKNESS);
 	player.setFillColor(sf::Color::Red);
-	player.setOutlineThickness(2);
 	player.setOutlineColor(sf::Color::Black);
-	player.setOrigin(sf::Vector2f(player.getOrigin().x + player.getRadius(), player.getOrigin().y + player.getRadius()));
-	player.setPosition(sf::Vector2f((float)SCREEN_WIDTH/2, (float)SCREEN_HEIGHT/2));
+	player.setOrigin(sf::Vector2f(player.getRadius(), player.getRadius()));
+	player.setPosition(sf::Vector2f(MAP_WIDTH / 2, MAP_HEIGHT / 2));
 
-	sf::RectangleShape pointer(sf::Vector2f(player.getRadius(), 2));
-	pointer.setPosition(player.getPosition());
-	pointer.setFillColor(sf::Color::Black);
-
-	for (int i = 0; i < RAY_COUNT; i++) {
-		ray_arr_x.push_back(sf::RectangleShape(sf::Vector2f(100, 2)));
-		ray_arr_x[i].setPosition(player.getPosition());
-		ray_arr_x[i].setFillColor(sf::Color::Yellow);
-		ray_arr_x[i].setRotation((player.getRotation() - HALF_FOV) + i * (float)FOV / RAY_COUNT);
-
-		ray_arr_y.push_back(sf::RectangleShape(sf::Vector2f(100, 2)));
-		ray_arr_y[i].setPosition(player.getPosition());
-		ray_arr_y[i].setFillColor(sf::Color::Green);
-		ray_arr_y[i].setRotation((player.getRotation() - HALF_FOV) + i * (float)FOV / RAY_COUNT);
-
-	}
+	player_dir.setPosition(player.getPosition());
+	player_dir.setFillColor(sf::Color::Black);
 
 	while (window.isOpen()) {
 
 		while (window.pollEvent(event)) {
-
-			if (event.type == sf::Event::Closed) {
-				window.close();
-			}
-			else if (event.type == sf::Event::KeyPressed) {
+			if (event.type == sf::Event::KeyPressed) {
 
 				if (event.key.code == sf::Keyboard::Escape) {
 					window.close();
 				}
-				else if (1 == sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
-					player.setRotation(player.getRotation() - 5);
-					pointer.setRotation(player.getRotation());
-					current_angle = pointer.getRotation();
-					for (int i = 0; i < RAY_COUNT; i++) {
-						ray_arr_x[i].setRotation((player.getRotation() - HALF_FOV) + i * (float)FOV / RAY_COUNT);
-						ray_arr_y[i].setRotation((player.getRotation() - HALF_FOV) + i * (float)FOV / RAY_COUNT);
-					}
-
-				}
-				else if (1 == sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-					player.setRotation(player.getRotation() + 5);
-					pointer.setRotation(player.getRotation());
-					current_angle = pointer.getRotation();
-					for (int i = 0; i < RAY_COUNT; i++) {
-						ray_arr_x[i].setRotation((player.getRotation() - HALF_FOV) + i * (float)FOV / RAY_COUNT);
-						ray_arr_y[i].setRotation((player.getRotation() - HALF_FOV) + i * (float)FOV / RAY_COUNT);
-					}
-				}
 				else {
+					if (event.key.code == sf::Keyboard::Z) {
+						
+						player.setPosition(sf::Vector2f(player.getPosition().x + step_x * check_player_collision_x(player, tile_vector), player.getPosition().y + step_y * check_player_collision_y(player, tile_vector)));
+					}
+					if (event.key.code == sf::Keyboard::S) {
+						
+						player.setPosition(sf::Vector2f(player.getPosition().x - step_x * check_player_collision_x(player, tile_vector), player.getPosition().y - step_y * check_player_collision_y(player, tile_vector)));
+					}
 
-					if (current_angle != prev_angle) {
-						step_x_comp = 5 * cos(deg_to_radians(player.getRotation()));
-						step_y_comp = 5 * sin(deg_to_radians(player.getRotation()));
+					if (event.key.code == sf::Keyboard::Q) {
 
-						prev_angle = current_angle;
+						player.setRotation(player.getRotation() - 5);
+
+					}
+					else if (event.key.code == sf::Keyboard::D) {
+
+						player.setRotation(player.getRotation() + 5);
 
 					}
 
-					for (int i = 0; i < tile_arr.size(); i++) {
-						if (circle_collision_detect(player, tile_arr[i])) {
-							if ((circle_x_pos >= rect_x_pos) && (circle_x_pos <= rect_x_pos + rect_width)) {
-								step_x_comp = 0;
-							}
-							else if ((circle_y_pos >= rect_y_pos) && (circle_y_pos <= rect_y_pos + rect_height)) {
-								step_y_comp = 0;
-							}
-						}
-					}
-
-					if (1 == sf::Keyboard::isKeyPressed(sf::Keyboard::Z)) {
-
-						player.setPosition(sf::Vector2f(player.getPosition().x + step_x_comp,
-														player.getPosition().y + step_y_comp));
-						pointer.setPosition(player.getPosition());
-
-						for (int i = 0; i < RAY_COUNT; i++) {
-							ray_arr_x[i].setPosition(player.getPosition());
-							ray_arr_y[i].setPosition(player.getPosition());
-						}
-
-					}
-					else if (1 == sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-
-						player.setPosition(sf::Vector2f(player.getPosition().x - step_x_comp,
-														player.getPosition().y - step_y_comp));
-						pointer.setPosition(player.getPosition());
-
-						for (int i = 0; i < RAY_COUNT; i++) {
-							ray_arr_x[i].setPosition(player.getPosition());
-							ray_arr_y[i].setPosition(player.getPosition());
-						}
-					}
+					step_x = 5 * cos(deg_to_rad(player.getRotation()));
+					step_y = 5 * sin(deg_to_rad(player.getRotation()));
 
 				}
 
 			}
-
+			else if (event.type == sf::Event::Closed) {
+				window.close();
+			}
 		}
 
-		//RAYCASTER
+		player_dir.setPosition(player.getPosition());
+		player_dir.setRotation(player.getRotation());
 
-		tile_x_pos = 0;
-		tile_y_pos = 0;
+		window.clear(sf::Color(200, 200, 200));
 
-		player_quad = player.getRotation() / 90;
-
-		while (player.getPosition().x > tile_x_pos) {
-			tile_x_pos += TILE_WIDTH;
-		}
-
-		while (player.getPosition().y > tile_y_pos) {
-			tile_y_pos += TILE_HEIGHT;
-		}
-
-		if (player_quad == 1) {
-			tile_x_pos -= TILE_WIDTH;
-
-		}
-		else if (player_quad == 2) {
-			tile_x_pos -= TILE_WIDTH;
-			tile_y_pos -= TILE_HEIGHT;
-		}
-		else if (player_quad == 3) {
-			tile_y_pos -= TILE_HEIGHT;
-		}
-
-		for (int i = 0; i < RAY_COUNT; i++) {
-
-
-			
-		}
-
-		window.clear(sf::Color::Black);
-
-		for (int i = 0; i < tile_arr.size(); i++) {
-			window.draw(tile_arr[i]);
+		for (int i = 0; i < tile_vector.size(); i++) {
+			window.draw(tile_vector[i]);
 		}
 
 		window.draw(player);
-		window.draw(pointer);
-
-		for (int i = 0; i < ray_arr_x.size(); i++) {
-			window.draw(ray_arr_x[i]);
-			window.draw(ray_arr_y[i]);
-		}
+		window.draw(player_dir);
 
 		window.display();
-
+		
 	}
 
 	return 0;
